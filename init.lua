@@ -21,10 +21,6 @@ minetest.register_chatcommand("emenu", {
 	params = "",
 	description = "Open Markets GUI",
 	func = function(name, param)
-		local gdp = 0
-		for key, val in pairs(player_balances) do
-			gdp = gdp + val
-		end
 		local itemlist = {}
 		local count = 0
 		local pricestr = ""
@@ -33,13 +29,13 @@ minetest.register_chatcommand("emenu", {
 			count = count + 1
 		end
 		for i=0, #itemlist do
-			pricestr = pricestr..itemlist[i].." "..(item_demand[itemlist[i]]-item_supply[itemlist[i]])..","
+			pricestr = pricestr..itemlist[i]..","
 		end
 		minetest.show_formspec(name, "markets:emenu",
 			"formspec_version[4]"..
 			"size[30,20]"..
 			"bgcolor[#00000073;both;#00000037]"..
-			"label[1,1;"..
+			"label[1,1;Available on market:\n"..
 			minetest.formspec_escape(pricestr)..
 			"]"..
 			"button[1,12;8,1;sell;sell 1 of item in hand]"..
@@ -47,15 +43,15 @@ minetest.register_chatcommand("emenu", {
 			"button[1,15;8,1;buy;buy 1 of item in field]"..
 			"button[1,16;8,1;price;price 1 of item in field]"..
 			"button[1,17;8,1;wtf;identify item in hand]"..
-			"label[1,19;balance: "..player_balances[name].."\n"..
-			"gdp: "..gdp.."]"..
+			"button[1,18;8,1;bal;get balance]"..
+			"button[1,19;8,1;gdp;get gdp]"..
 			"")
 	end
 })
 
 minetest.register_on_player_receive_fields(function(player, formname, fields)
 	if formname ~= "markets:emenu" then
-		return
+		return true
 	end
 	local name = player:get_player_name()
 	local param = fields.item
@@ -93,7 +89,9 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 		else
 			minetest.get_player_by_name(name):set_wielded_item(ItemStack(inhand:get_name().." "..(inhand:get_count()-1)))
 		end
-	else if fields.buy then
+		return true
+	end
+	if fields.buy then
 		if param == "" or param == nil then
 			minetest.chat_send_player(name, "You can't buy nil!")
 			return true
@@ -120,10 +118,12 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 			minetest.chat_send_player(name, "You're too poor!")
 			return true
 		end
-	else if fields.wtf then
+	end
+	if fields.wtf then
 		minetest.chat_send_player(name, "You have item \""..minetest.get_player_by_name(name):get_wielded_item():get_name().."\"")
 		return true
-	else if fields.price then
+	end
+	if fields.price then
 		if param == "" or param == nil then
 			minetest.chat_send_player(name, "You can't price nil!")
 			return true
@@ -133,6 +133,18 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 			return true
 		end
 		minetest.chat_send_player(name, "Price of "..param.." is "..(item_demand[param] - item_supply[param]))
+		return true
+	end
+	if fields.bal then
+		minetest.chat_send_player(name, "Balance is "..player_balances[name])
+		return true
+	end
+	if fields.gdp then
+		local gdp = 0
+		for key, val in pairs(player_balances) do
+			gdp = gdp + val
+		end
+		minetest.chat_send_player(name, "GDP: "..gdp)
 		return true
 	end
 end)
