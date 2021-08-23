@@ -2,10 +2,11 @@
 -- /sell - sells 1 of item in hand for market price, and decrease market price by 1
 -- /buy - buys 1 of item in hand for market price, and increase market price by 1
 -- negative price? == 0 or?
+-- price = demand - supply
 
-market_prices = {}
 player_balances = {}
-local initial_price = 0
+item_supply = {}
+item_demand = {}
 
 minetest.register_on_dignode(function(pos, oldnode, digger)
 	local inv = digger:get_inventory()
@@ -36,11 +37,11 @@ minetest.register_chatcommand("price", {
 			minetest.chat_send_player(name, "You can't price nil!")
 			return false
 		end
-		if market_prices[param] == nil then
+		if item_supply[param] == nil then
 			minetest.chat_send_player(name, "Not yet on market!")
 			return true
 		end
-		minetest.chat_send_player(name, "Price of "..param.." is "..market_prices[param])
+		minetest.chat_send_player(name, "Price of "..param.." is "..(item_demand[param] - item_supply[param]))
 		return true
 	end
 })
@@ -56,15 +57,20 @@ minetest.register_chatcommand("buy", {
 		if player_balances[name] == nil then
 			player_balances[name] = 0
 		end
-		if market_prices[param] == nil then
+		if item_supply[param] == nil then
 			minetest.chat_send_player(name, "Not yet on market!")
 			return true
 		end
-		if player_balances[name] >= market_prices[param] then
-			player_balances[name] = player_balances[name] - market_prices[param]
-			market_prices[param] = market_prices[param] + 1
+		if item_demand[param] == nil then
+			item_demand[param] = 0
+		end
+		local price = item_demand[param] - item_supply[param]
+		if player_balances[name] >= price then
+			player_balances[name] = player_balances[name] - price
 			minetest.chat_send_player(name, "Bought! Balance is now "..player_balances[name])
 			minetest.get_player_by_name(name):get_inventory():add_item("main", param)
+			item_demand[param] = item_demand[param] + 1
+			item_supply[param] = item_supply[param] - 1
 			return true
 		else
 			minetest.chat_send_player(name, "You're too poor!")
@@ -85,20 +91,25 @@ minetest.register_chatcommand("sell", {
 		if player_balances[name] == nil then
 			player_balances[name] = 0
 		end
-		if market_prices[inhand:get_name()] == nil then
-			market_prices[inhand:get_name()] = initial_price
+		if item_supply[inhand:get_name()] == nil then
+			item_supply[inhand:get_name()] = 0
 		end
-		if market_prices[inhand:get_name()] < 0 then
-			if player_balances[name] > 0 - market_prices[inhand:get_name()] then
-				player_balances[name] = player_balances[name] + market_prices[inhand:get_name()]
+		if item_demand[inhand:get_name()] == nil then
+			item_demand[inhand:get_name()] = 0
+		end
+		local price = item_demand[inhand:get_name()] - item_supply[inhand:get_name()]
+		if price < 0 then
+			if player_balances[name] > 0 - price then
+				player_balances[name] = player_balances[name] + price
 			else
 				minetest.chat_send_player(name, "You don't have enough funds!")
 				return true
 			end
 		else
-			player_balances[name] = player_balances[name] + market_prices[inhand:get_name()]
+			player_balances[name] = player_balances[name] + price
 		end
-		market_prices[inhand:get_name()] = market_prices[inhand:get_name()] - 1
+		item_supply[inhand:get_name()] = item_supply[inhand:get_name()] + 1
+		item_demand[inhand:get_name()] = item_demand[inhand:get_name()] - 1
 		minetest.chat_send_player(name, "Sold "..inhand:get_name().."! Balance is now "..player_balances[name])
 		if inhand:get_count() == 1 then
 			minetest.get_player_by_name(name):set_wielded_item(ItemStack(""))
@@ -118,9 +129,23 @@ minetest.register_chatcommand("wtf", {
 	end
 })
 
+minetest.register_chatcommand("gdp", {
+	params = "",
+	description = "List total money in circulation", -- money.circ is MV/P=Y
+	func = function(name, param)
+		local gdp = 0
+		for key, val in pairs(player_balances) do
+			gdp = gdp + val
+		end
+		minetest.chat_send_player(name, "GDP: "..gdp)
+		return true
+	end
+})
+
 function save_market()
 	local dat = {}
-	dat.mp = market_prices
+	dat.is = item_supply
+	dat.id = item_demand
 	dat.pb = player_balances
 	local fp = io.open(minetest.get_worldpath() .. "/markets.dat", "w")
 	fp:write(minetest.serialize(dat))
@@ -132,7 +157,8 @@ function load_market()
 	local fp = io.open(minetest.get_worldpath() .. "/markets.dat", "r")
 	if fp then
 		dat = minetest.deserialize(fp:read("*all"))
-		market_prices = dat.mp
+		item_supply = dat.is
+		item_demand = dat.id
 		player_balances = dat.pb
 		io.close(fp)
 	end
