@@ -5,7 +5,7 @@
 
 market_prices = {}
 player_balances = {}
-local initial_price = 55555
+local initial_price = 1
 local lower_limit_price = 0 -- items allowed to be free but cannot become actual "negative price" - can also be used to limit it at 1 value |||||||
 local flation_rate = 0.23 -- 23% inflation rate / deflation rate by default
 
@@ -52,6 +52,10 @@ minetest.register_chatcommand("buy", {
 	params = "<itemstr> | <idea/stock>", -- fix idea/stock bug lol by checking if item is real, maybe idk it's funny though, could also allow spamming dbs though so :\ TODO
 	description = "Buy one of item",
 	func = function(name, param)
+		if param == "" or param == nil then
+			minetest.chat_send_player(name, "You can't buy nil!")
+			return false
+		end
 		if player_balances[name] == nil then
 			player_balances[name] = 0
 			minetest.chat_send_player(name, "Get some moneyz first!")
