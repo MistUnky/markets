@@ -5,7 +5,7 @@
 
 market_prices = {}
 player_balances = {}
-local initial_price = 325
+local initial_price = 55555
 local lower_limit_price = 0 -- items allowed to be free but cannot become actual "negative price" - can also be used to limit it at 1 value |||||||
 local flation_rate = 0.23 -- 23% inflation rate / deflation rate by default
 
