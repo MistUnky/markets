@@ -8,6 +8,7 @@ player_balances = {}
 local initial_price = 1
 local lower_limit_price = 0 -- items allowed to be free but cannot become actual "negative price" - can also be used to limit it at 1 value |||||||
 local flation_rate = 0.23 -- 23% inflation rate / deflation rate by default
+item_stock = {}
 
 minetest.register_on_dignode(function(pos, oldnode, digger)
 	local inv = digger:get_inventory()
@@ -43,6 +44,9 @@ minetest.register_chatcommand("price", {
 		if market_prices[param] == nil then
 			market_prices[param] = initial_price
 		end
+		if item_stock[param] == nil then
+			item_stock[param] = 0
+		end
 		minetest.chat_send_player(name, "Price of "..param.." is "..market_prices[param])
 		return true
 	end
@@ -64,9 +68,17 @@ minetest.register_chatcommand("buy", {
 		if market_prices[param] == nil then
 			market_prices[param] = initial_price
 		end
+		if item_stock[param] == nil then
+			item_stock[param] = 0
+		end
+		if item_stock[param] <= 0 then
+			minetest.chat_send_player(name, "Out of stock!")
+			return true
+		end
 		if player_balances[name] >= market_prices[param] then
 			player_balances[name] = player_balances[name] - market_prices[param]
 			market_prices[param] = market_prices[param] * (1 + flation_rate) --+ 1
+			item_stock[param] = item_stock[param] - 1
 			minetest.chat_send_player(name, "Bought! Balance is now "..player_balances[name])
 			minetest.get_player_by_name(name):get_inventory():add_item("main", param)
 			return true
@@ -93,10 +105,14 @@ minetest.register_chatcommand("sell", {
 		if market_prices[inhand:get_name()] == nil then
 			market_prices[inhand:get_name()] = initial_price
 		end
+		if item_stock[inhand:get_name()] == nil then
+			item_stock[inhand:get_name()] = 0
+		end
 		if market_prices[inhand:get_name()] > lower_limit_price then
 			player_balances[name] = player_balances[name] + market_prices[inhand:get_name()]
 		end
 		market_prices[inhand:get_name()] = market_prices[inhand:get_name()] * (1 - flation_rate) --- 1
+		item_stock[inhand:get_name()] = item_stock[inhand:get_name()] + 1
 		minetest.chat_send_player(name, "Sold! Balance is now "..player_balances[name])
 		if inhand:get_count() == 1 then
 			minetest.get_player_by_name(name):set_wielded_item(ItemStack(""))
@@ -111,6 +127,7 @@ function save_market()
 	local dat = {}
 	dat.mp = market_prices
 	dat.pb = player_balances
+	dat.is = item_stock
 	local fp = io.open(minetest.get_worldpath() .. "/markets.dat", "w")
 	fp:write(minetest.serialize(dat))
 	io.close(fp)
@@ -123,6 +140,7 @@ function load_market()
 		dat = minetest.deserialize(fp:read("*all"))
 		market_prices = dat.mp
 		player_balances = dat.pb
+		item_stock = dat.is
 		io.close(fp)
 	end
 end
