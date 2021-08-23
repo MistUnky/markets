@@ -34,6 +34,7 @@ minetest.register_chatcommand("emenu", {
 		minetest.show_formspec(name, "markets:emenu",
 			"formspec_version[4]"..
 			"size[30,20]"..
+			"no_prepend[]"..
 			"bgcolor[#00000073;both;#00000037]"..
 			"label[1,1;Available on market:\n"..
 			minetest.formspec_escape(pricestr)..
