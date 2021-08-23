@@ -17,76 +17,53 @@ minetest.register_on_dignode(function(pos, oldnode, digger)
 	end
 end)
 
-minetest.register_chatcommand("bal", {
+minetest.register_chatcommand("emenu", {
 	params = "",
-	description = "Print Balance",
+	description = "Open Markets GUI",
 	func = function(name, param)
-		if player_balances[name] == nil then
-			player_balances[name] = 0
+		local gdp = 0
+		for key, val in pairs(player_balances) do
+			gdp = gdp + val
 		end
-		minetest.chat_send_player(name, "Balance is currently "..player_balances[name])
-		return true
+		local itemlist = {}
+		local count = 0
+		local pricestr = ""
+		for key, val in pairs(item_supply) do
+			itemlist[count] = key
+			count = count + 1
+		end
+		for i=0, #itemlist do
+			pricestr = pricestr..itemlist[i].." "..(item_demand[itemlist[i]]-item_supply[itemlist[i]])..","
+		end
+		minetest.show_formspec(name, "markets:emenu",
+			"formspec_version[4]"..
+			"size[30,20]"..
+			"bgcolor[#00000073;both;#00000037]"..
+			"label[1,1;"..
+			minetest.formspec_escape(pricestr)..
+			"]"..
+			"button[1,12;8,1;sell;sell 1 of item in hand]"..
+			"field[1,14;8,1;item;item to buy or price;]"..
+			"button[1,15;8,1;buy;buy 1 of item in field]"..
+			"button[1,16;8,1;price;price 1 of item in field]"..
+			"button[1,17;8,1;wtf;identify item in hand]"..
+			"label[1,19;balance: "..player_balances[name].."\n"..
+			"gdp: "..gdp.."]"..
+			"")
 	end
 })
 
-minetest.register_chatcommand("price", {
-	params = "<itemstr>",
-	description = "List price of item",
-	func = function(name, param)
-		if param == "" or param == nil then
-			minetest.chat_send_player(name, "You can't price nil!")
-			return false
-		end
-		if item_supply[param] == nil then
-			minetest.chat_send_player(name, "Not yet on market!")
-			return true
-		end
-		minetest.chat_send_player(name, "Price of "..param.." is "..(item_demand[param] - item_supply[param]))
-		return true
+minetest.register_on_player_receive_fields(function(player, formname, fields)
+	if formname ~= "markets:emenu" then
+		return
 	end
-})
-
-minetest.register_chatcommand("buy", {
-	params = "<itemstr>",
-	description = "Buy one of item",
-	func = function(name, param)
-		if param == "" or param == nil then
-			minetest.chat_send_player(name, "You can't buy nil!")
-			return false
-		end
-		if player_balances[name] == nil then
-			player_balances[name] = 0
-		end
-		if item_supply[param] == nil then
-			minetest.chat_send_player(name, "Not yet on market!")
-			return true
-		end
-		if item_demand[param] == nil then
-			item_demand[param] = 0
-		end
-		local price = item_demand[param] - item_supply[param]
-		if player_balances[name] >= price then
-			player_balances[name] = player_balances[name] - price
-			minetest.chat_send_player(name, "Bought! Balance is now "..player_balances[name])
-			minetest.get_player_by_name(name):get_inventory():add_item("main", param)
-			item_demand[param] = item_demand[param] + 1
-			item_supply[param] = item_supply[param] - 1
-			return true
-		else
-			minetest.chat_send_player(name, "You're too poor!")
-			return true
-		end
-	end
-})
-
-minetest.register_chatcommand("sell", {
-	params = "",
-	description = "Sell one of item",
-	func = function(name, param)
+	local name = player:get_player_name()
+	local param = fields.item
+	if fields.sell then
 		local inhand = minetest.get_player_by_name(name):get_wielded_item()
 		if inhand:get_name() == "" then
 			minetest.chat_send_player(name, "You can't sell nil!")
-			return false
+			return true
 		end
 		if player_balances[name] == nil then
 			player_balances[name] = 0
@@ -116,31 +93,49 @@ minetest.register_chatcommand("sell", {
 		else
 			minetest.get_player_by_name(name):set_wielded_item(ItemStack(inhand:get_name().." "..(inhand:get_count()-1)))
 		end
-		return true
-	end
-})
-
-minetest.register_chatcommand("wtf", {
-	params = "",
-	description = "Detect Item in Hand's Name",
-	func = function(name, param)
+	else if fields.buy then
+		if param == "" or param == nil then
+			minetest.chat_send_player(name, "You can't buy nil!")
+			return true
+		end
+		if player_balances[name] == nil then
+			player_balances[name] = 0
+		end
+		if item_supply[param] == nil then
+			minetest.chat_send_player(name, "Not yet on market!")
+			return true
+		end
+		if item_demand[param] == nil then
+			item_demand[param] = 0
+		end
+		local price = item_demand[param] - item_supply[param]
+		if player_balances[name] >= price then
+			player_balances[name] = player_balances[name] - price
+			minetest.chat_send_player(name, "Bought! Balance is now "..player_balances[name])
+			minetest.get_player_by_name(name):get_inventory():add_item("main", param)
+			item_demand[param] = item_demand[param] + 1
+			item_supply[param] = item_supply[param] - 1
+			return true
+		else
+			minetest.chat_send_player(name, "You're too poor!")
+			return true
+		end
+	else if fields.wtf then
 		minetest.chat_send_player(name, "You have item \""..minetest.get_player_by_name(name):get_wielded_item():get_name().."\"")
 		return true
-	end
-})
-
-minetest.register_chatcommand("gdp", {
-	params = "",
-	description = "List total money in circulation", -- money.circ is MV/P=Y
-	func = function(name, param)
-		local gdp = 0
-		for key, val in pairs(player_balances) do
-			gdp = gdp + val
+	else if fields.price then
+		if param == "" or param == nil then
+			minetest.chat_send_player(name, "You can't price nil!")
+			return true
 		end
-		minetest.chat_send_player(name, "GDP: "..gdp)
+		if item_supply[param] == nil then
+			minetest.chat_send_player(name, "Not yet on market!")
+			return true
+		end
+		minetest.chat_send_player(name, "Price of "..param.." is "..(item_demand[param] - item_supply[param]))
 		return true
 	end
-})
+end)
 
 function save_market()
 	local dat = {}
