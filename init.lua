@@ -31,14 +31,13 @@ minetest.register_chatcommand("emenu", {
 		for i=0, #itemlist do
 			pricestr = pricestr..itemlist[i]..","
 		end
+		if true then -- allow hiding of item listing
 		minetest.show_formspec(name, "markets:emenu",
 			"formspec_version[4]"..
 			"size[30,20]"..
 			"no_prepend[]"..
 			"bgcolor[#00000073;both;#00000037]"..
-			"label[1,1;Available on market:\n"..
-			minetest.formspec_escape(pricestr)..
-			"]"..
+			"label[1,1;Available on market:\n"..minetest.formspec_escape(pricestr).."]"..
 			"button[1,12;8,1;sell;sell 1 of item in hand]"..
 			"field[1,14;8,1;item;item to buy or price;]"..
 			"button[1,15;8,1;buy;buy 1 of item in field]"..
@@ -47,6 +46,21 @@ minetest.register_chatcommand("emenu", {
 			"button[1,18;8,1;bal;get balance]"..
 			"button[1,19;8,1;gdp;get gdp]"..
 			"")
+		else
+		minetest.show_formspec(name, "markets:emenu",
+			"formspec_version[4]"..
+			"size[10,9]"..
+			"no_prepend[]"..
+			"bgcolor[#00000073;both;#00000037]"..
+			"button[1,1;8,1;sell;sell 1 of item in hand]"..
+			"field[1,2;8,1;item;item to buy or price;]"..
+			"button[1,3;8,1;buy;buy 1 of item in field]"..
+			"button[1,4;8,1;price;price 1 of item in field]"..
+			"button[1,5;8,1;wtf;identify item in hand]"..
+			"button[1,6;8,1;bal;get balance]"..
+			"button[1,7;8,1;gdp;get gdp]"..
+			"")
+		end
 	end
 })
 
