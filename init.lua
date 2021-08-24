@@ -1,9 +1,4 @@
--- /price - list price of item (initial=initial_price (value subj to change))
--- /sell - sells 1 of item in hand for market price, and decrease market price by 1
--- /buy - buys 1 of item in hand for market price, and increase market price by 1
--- negative price? == 0 or?
--- price = demand - supply
-
+--
 player_balances = {}
 item_supply = {}
 item_demand = {}
@@ -21,7 +16,7 @@ minetest.register_chatcommand("emenu", {
 	params = "",
 	description = "Open Markets GUI",
 	func = function(name, param)
-		local itemlist = {}
+		--[[local itemlist = {}
 		local count = 0
 		local pricestr = ""
 		for key, val in pairs(item_supply) do
@@ -30,8 +25,9 @@ minetest.register_chatcommand("emenu", {
 		end
 		for i=0, #itemlist do
 			pricestr = pricestr..itemlist[i]..","
-		end
-		if true then -- allow hiding of item listing
+		end--]]
+		if false then -- allow hiding of item listing
+		--add icon listing/setup (TODO:????)
 		minetest.show_formspec(name, "markets:emenu",
 			"formspec_version[4]"..
 			"size[30,20]"..
@@ -154,7 +150,7 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 		minetest.chat_send_player(name, "Balance is "..player_balances[name])
 		return true
 	end
-	if fields.gdp then
+	if fields.gdp then -- not GDP, it's just the total amount of currency available w/ players' balances
 		local gdp = 0
 		for key, val in pairs(player_balances) do
 			gdp = gdp + val
